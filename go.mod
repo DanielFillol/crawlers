@@ -3,7 +3,7 @@ module crawlers
 go 1.20
 
 require (
-	github.com/DanielFillol/goSpider v1.2.0 // indirect
+	github.com/DanielFillol/goSpider v1.3.0 // indirect
 	github.com/antchfx/htmlquery v1.3.1 // indirect
 	github.com/antchfx/xpath v1.3.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20240602235142-49d0e97b7881 // indirect
@@ -15,7 +15,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 )

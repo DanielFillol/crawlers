@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	users := []goSpider.Requests{
+	users := []goSpider.Request{
 		{SearchString: "1017927-35.2023.8.26.0008"},
 		{SearchString: "0002396-75.2013.8.26.0201"},
 		{SearchString: "1551285-50.2021.8.26.0477"},
@@ -25,15 +25,19 @@ func main() {
 		{SearchString: "1024511-70.2022.8.26.0003"},
 	}
 
-	numberOfWorkers := 1
-	duration := 0 * time.Millisecond
+	numberOfWorkers := 10
+	duration := 500 * time.Millisecond
 
-	results, err := goSpider.ParallelRequests(users, numberOfWorkers, duration, Crawler)
+	start := time.Now()
+	resultsFirst, err := goSpider.ParallelRequests(users, numberOfWorkers, duration, Crawler)
 	if err != nil {
-		log.Println("Expected %d results, but got %d, List results: %v", len(users), 0, len(results))
+		log.Printf("Expected %d results, but got %d, List results: %v", len(users), 0, len(resultsFirst))
 	}
 
-	log.Println("Finish Parallel Requests!")
+	results, err := goSpider.EvaluateParallelRequests(resultsFirst, Crawler, Eval)
+	if err != nil {
+		log.Printf("Expected %d results, but got %d, List results: %v", len(users), 0, len(results))
+	}
 
 	type Lawsuit struct {
 		Cover     Cover
@@ -73,11 +77,32 @@ func main() {
 	}
 
 	fmt.Println(lawsuits)
+
+	fmt.Println(len(lawsuits))
+	fmt.Println(time.Since(start))
+}
+
+func Eval(previousResults []goSpider.PageSource) ([]goSpider.Request, []goSpider.PageSource) {
+	var newRequests []goSpider.Request
+	var validResults []goSpider.PageSource
+
+	for _, result := range previousResults {
+		_, err := extractDataCover(result.Page, "//*[@id=\"numeroProcesso\"]", "//*[@id=\"labelSituacaoProcesso\"]", "//*[@id=\"classeProcesso\"]", "//*[@id=\"assuntoProcesso\"]", "//*[@id=\"foroProcesso\"]", "//*[@id=\"varaProcesso\"]", "//*[@id=\"juizProcesso\"]", "//*[@id=\"dataHoraDistribuicaoProcesso\"]", "//*[@id=\"numeroControleProcesso\"]", "//*[@id=\"areaProcesso\"]/span", "//*[@id=\"valorAcaoProcesso\"]")
+		if err != nil {
+			newRequests = append(newRequests, goSpider.Request{SearchString: result.Request})
+		} else {
+			validResults = append(validResults, result)
+		}
+	}
+
+	return newRequests, validResults
 }
 
 func Crawler(d string) (*html.Node, error) {
-	url := "https://esaj.tjsp.jus.br/cpopg/open.do"
 	nav := goSpider.NewNavigator()
+	defer nav.Close()
+
+	url := "https://esaj.tjsp.jus.br/cpopg/open.do"
 
 	err := nav.OpenURL(url)
 	if err != nil {
@@ -103,9 +128,9 @@ func Crawler(d string) (*html.Node, error) {
 		return nil, err
 	}
 
-	err = nav.WaitForElement("#tabelaUltimasMovimentacoes > tr:nth-child(1) > td.dataMovimentacao", 15*time.Second)
+	_, err = nav.WaitPageLoad()
 	if err != nil {
-		log.Printf("WaitForElement error: %v", err)
+		log.Printf("WaitPageLoad error: %v", err)
 		return nil, err
 	}
 
@@ -262,7 +287,7 @@ func extractDataPerson(pageSource *html.Node, xpathPeople string, xpathPole stri
 		if err != nil {
 			lawyers = append(lawyers, "no lawyer found")
 		}
-		for j, _ := range ll {
+		for j := range ll {
 			n, err := goSpider.ExtractText(person, "td[2]/text()["+strconv.Itoa(j+1)+"]", dirt)
 			if err != nil {
 				return nil, errors.New("error extract data person, lawyer not  found: " + err.Error())
